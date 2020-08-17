@@ -1,22 +1,23 @@
 package com.landvibe.webideworkerpool.container.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-import java.time.LocalDateTime;
+import lombok.*;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
+@EqualsAndHashCode
+@Document(collection = "containers")
 public class Container {
-    private long id;
+    private String id;
     private String name;
     private String description;
     private String status;
     private String type;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private String createdAt;
+    private String updatedAt;
+    private String userId;
 }

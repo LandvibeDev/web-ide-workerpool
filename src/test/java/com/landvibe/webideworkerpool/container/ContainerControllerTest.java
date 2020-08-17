@@ -1,18 +1,28 @@
 package com.landvibe.webideworkerpool.container;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.landvibe.webideworkerpool.container.controller.ContainerController;
 import com.landvibe.webideworkerpool.container.model.Container;
+import com.landvibe.webideworkerpool.container.service.ContainerService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -22,40 +32,65 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ContainerControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
+
+    @Mock
+    private ContainerService containerService;
+
+    @InjectMocks
+    private ContainerController containerController;
+
+    @BeforeEach
+    public void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(containerController).build();
+    }
 
     @Autowired
     private ObjectMapper objectMapper;
 
     @Test
     void getContainers() throws Exception {
-        LocalDateTime time = LocalDateTime.parse("2020-04-10T20:09:31", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        List<Container> containers = new ArrayList<>();
-        containers.add(new Container(0, "container0", "description", "running", "nodejs:12", time, time));
-        containers.add(new Container(1, "container1", "description", "running", "nodejs:12", time, time));
-        containers.add(new Container(2, "container2", "description", "running", "nodejs:12", time, time));
+        // given
+        String time = Instant.now().toString();
+        List<Container> expected = new ArrayList<>();
+        String userId = "user1";
+        expected.add(new Container(UUID.randomUUID().toString(), "container0", "description", "running", "nodejs:12", time, time, userId));
+        expected.add(new Container(UUID.randomUUID().toString(), "container1", "description", "running", "nodejs:12", time, time, userId));
+        expected.add(new Container(UUID.randomUUID().toString(), "container2", "description", "running", "nodejs:12", time, time, userId));
 
-        String expectedContent = objectMapper.writeValueAsString(containers);
+        given(containerService.getContainers(userId, 30, 0)).willReturn(expected);
 
-        mockMvc.perform(get("/containers")
+
+        // when, then
+        mockMvc.perform(get("/containers?userId=" + userId)
                 .queryParam("limit", "30")
                 .queryParam("skip", "0"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(expectedContent))
+                .andExpect(content().string(objectMapper.writeValueAsString(expected)))
                 .andDo(print());
+
+        verify(containerService, times(1)).getContainers(userId, 30, 0);
     }
 
     @Test
     void getContainer() throws Exception {
-        LocalDateTime time = LocalDateTime.parse("2020-04-10T20:09:31", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        Container container = new Container(0, "container0", "description", "running", "nodejs:12", time, time);
+        String time = Instant.now().toString();
+        String userId = "user1";
+        String cid = UUID.randomUUID().toString();
 
-        String expectedContent = objectMapper.writeValueAsString(container);
+        Container container = new Container(cid, "container0", "description", "running", "nodejs:12", time, time, userId);
+        Optional<Container> expected = Optional.of(container);
 
-        mockMvc.perform(get("/containers/0"))
+        String expectedContent = objectMapper.writeValueAsString(expected);
+
+        given(containerService.getContainer(cid)).willReturn(expected);
+
+
+        mockMvc.perform(get("/containers/" + cid))
                 .andExpect(status().isOk())
                 .andExpect(content().string(expectedContent))
                 .andDo(print());
+
+        verify(containerService, times(1)).getContainer(cid);
     }
 }
